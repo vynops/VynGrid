@@ -1,0 +1,17 @@
+{
+  "/_global-error/page": "/_global-error",
+  "/_not-found/page": "/_not-found",
+  "/activity/page": "/activity",
+  "/api/account/password/route": "/api/account/password",
+  "/api/activity/route": "/api/activity",
+  "/api/auth/[...nextauth]/route": "/api/auth/[...nextauth]",
+  "/api/config/credentials/route": "/api/config/credentials",
+  "/api/config/credentials/test/route": "/api/config/credentials/test",
+  "/api/config/route": "/api/config",
+  "/api/health/route": "/api/health",
+  "/api/products/status/route": "/api/products/status",
+  "/login/page": "/login",
+  "/matrix/page": "/matrix",
+  "/page": "/",
+  "/settings/page": "/settings"
+}

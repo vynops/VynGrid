@@ -1,0 +1,12 @@
+.next/
+node_modules/
+.vercel/
+.turbo/
+.env
+.env.*
+*.log
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
+config.grid.local.json
+data/product-credentials.enc.json
