@@ -1,25 +1,59 @@
+<div align="center">
+
 # VynGrid
 
-> Unified control plane for the Vyn product estate.
+### Unified Vyn Product Operations Console
+
+**Self-hosted · Multi-product observability · Enterprise ready**
+
+[![Node.js](https://img.shields.io/badge/Node.js-20+-339933?logo=node.js&logoColor=white)](https://nodejs.org)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white)](https://nextjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3-38B2AC?logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
+[![Live Console](https://img.shields.io/badge/Live_Console-grid.vynops.online-0f766e)](https://grid.vynops.online)
+[![Part of VynOps](https://img.shields.io/badge/Part_of-VynOps_Suite-2563eb)](https://vynops.com)
+
+*Monitor. Diagnose. Coordinate. Your Vyn product estate from one control plane.*
+
+[**Live Console**](https://grid.vynops.online) · [**VynOps Suite**](https://vynops.com)
+
+</div>
+
+---
+
+## Overview
 
 VynGrid monitors product availability, response time, activity, and 30-day uptime from a single authenticated console. It is designed for operators who need one reliable view across the Vyn product portfolio.
 
-## Contents
+Built with Next.js 16 and a local JSON data store, VynGrid monitors configured services from the server itself, normalizes their operational activity, and keeps product credentials encrypted at rest. It requires no separate database or monitoring agent.
 
-- [What It Does](#what-it-does)
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Architecture](#architecture)
 - [Requirements](#requirements)
-- [Quick Start](#quick-start)
-- [First Sign-in](#first-sign-in)
+- [Installation](#installation)
+  - [Local Development](#local-development)
+  - [First Sign-in](#first-sign-in)
 - [Using the Console](#using-the-console)
-- [Configure Products](#configure-products)
-- [Product Integration Contract](#product-integration-contract)
+- [Configuration](#configuration)
+  - [Product Integration Contract](#product-integration-contract)
 - [Security](#security)
 - [Environment Variables](#environment-variables)
 - [API Reference](#api-reference)
 - [Operations](#operations)
+  - [Production with PM2](#production-with-pm2)
+  - [nginx Reverse Proxy](#nginx-reverse-proxy)
+  - [Persistent Data](#persistent-data)
+- [Project Structure](#project-structure)
+- [Technology Stack](#technology-stack)
 - [Troubleshooting](#troubleshooting)
+- [Related Projects](#related-projects)
+- [License](#license)
 
-## What It Does
+## Features
 
 VynGrid gives an operations team one place to:
 
@@ -32,6 +66,19 @@ VynGrid gives an operations team one place to:
 
 The default grid includes VynOps, VynDC, VynCICD, VynCost, VynDB, VynAI, VynHana, and VynSAP. Adapt it to another product estate through **Settings** or `config.grid.json`.
 
+## Architecture
+
+VynGrid is a server-rendered Next.js application. The browser talks only to VynGrid; the server owns authentication, encrypted credentials, product health checks, and activity collection.
+
+```text
+Browser --> VynGrid console --> authenticated product APIs
+              |       |
+              |       +--> encrypted credentials and health history on disk
+              +--> NextAuth session and administrator authentication
+```
+
+Each enabled product is defined in `config.grid.json`. VynGrid requests its health and activity endpoints from the VynGrid host, optionally establishes an authenticated session, records health observations, and returns normalized data to the console.
+
 ## Requirements
 
 | Requirement | Version | Purpose |
@@ -42,7 +89,9 @@ The default grid includes VynOps, VynDC, VynCICD, VynCost, VynDB, VynAI, VynHana
 
 VynGrid uses local JSON files for configuration and history; it does not require a database.
 
-## Quick Start
+## Installation
+
+### Local Development
 
 ```powershell
 cd D:\grid\VynGrid
@@ -116,7 +165,7 @@ The **Activity** page collects up to 100 newest normalized events. It recognizes
 
 Settings are persisted to `config.grid.json`, so no rebuild is required. You can rename the grid, set the refresh interval from 5 to 300 seconds, enable or disable products, alter endpoints, and save/test integration credentials.
 
-## Configure Products
+## Configuration
 
 `config.grid.json` is the source of truth for the monitored estate. Each product follows this shape:
 
@@ -255,14 +304,26 @@ npm run build
 
 The project also defines `npm run lint`; it currently invokes `next lint`, which is not supported by current Next.js releases. Use the production build as the authoritative validation until the lint script is updated to call ESLint directly.
 
-### Production run
+### Production with PM2
 
 ```powershell
 npm run build
 npm run start
 ```
 
-Development and production both use port `3015`. For HTTPS, proxy the public host to `http://127.0.0.1:3015`, configure `NEXTAUTH_URL` and `AUTH_URL` with the public HTTPS URL, and set `AUTH_TRUST_HOST=true`.
+Development and production both use port `3015`. Start the production process with PM2:
+
+```bash
+cd /home/vyngrid/vyngrid
+npm install
+npm run build
+pm2 start npm --name vyngrid -- start
+pm2 save
+```
+
+### nginx Reverse Proxy
+
+For HTTPS, proxy `https://grid.vynops.online` to `http://127.0.0.1:3015`, configure `NEXTAUTH_URL` and `AUTH_URL` with the public HTTPS URL, and set `AUTH_TRUST_HOST=true`. The production nginx configuration is at `deploy/nginx/grid.vynops.online.conf`; the complete DNS, TLS, and PM2 procedure is in [deploy/README-vyngrid-https.md](deploy/README-vyngrid-https.md).
 
 ### Apply environment changes
 
@@ -281,7 +342,7 @@ Run these commands as the `vyngrid` application user. Verify the service afterwa
 
 For the established VynGrid HTTPS deployment, see [deploy/README-vyngrid-https.md](deploy/README-vyngrid-https.md).
 
-### Persistent data
+### Persistent Data
 
 | Path | Purpose |
 | --- | --- |
@@ -291,6 +352,32 @@ For the established VynGrid HTTPS deployment, see [deploy/README-vyngrid-https.m
 | `data/admin-password.json` | Local bcrypt hash created by an in-app admin password change. |
 
 Back up the `data/` directory on persistent storage. All product URLs are evaluated from the VynGrid server, so `localhost` means the VynGrid host, not the browser running the dashboard.
+
+## Project Structure
+
+```text
+src/
+  app/          App Router pages and HTTP API routes
+  components/   Console, dashboard, grid, and layout components
+  hooks/        Client-side status and command-palette hooks
+  lib/          Server-side configuration, credential, and product utilities
+  types/        Shared TypeScript definitions
+data/            Persistent local health, credential, and password records
+deploy/          nginx configuration and HTTPS deployment guidance
+config.grid.json Product definitions and console settings
+```
+
+## Technology Stack
+
+| Technology | Use |
+| --- | --- |
+| Next.js 16 / React 19 | App Router application and server endpoints |
+| TypeScript | Type-safe product, status, and API contracts |
+| Tailwind CSS | Console styling and responsive layout |
+| NextAuth v5 | Credentials authentication and sessions |
+| bcryptjs | Administrator password hashing and verification |
+| Node.js crypto | AES-256-GCM encryption for product credentials |
+| PM2 and nginx | Production process management and HTTPS reverse proxy |
 
 ## Troubleshooting
 
@@ -304,6 +391,10 @@ Back up the `data/` directory on persistent storage. All product URLs are evalua
 | Credentials fail after a rotation | Restore the previous encryption key or save every product credential again with the new key. |
 | Product links use the wrong address | Update the product base URL or set `NEXT_PUBLIC_VYNGRID_DOMAIN` and matching `subdomain` values. |
 | Health history does not persist | Ensure the VynGrid process can write to `data/`. |
+
+## Related Projects
+
+VynGrid is the shared operations console for the VynOps product suite. Its default configuration includes VynOps, VynDC, VynCICD, VynCost, VynDB, VynAI, VynHana, and VynSAP. Product availability depends on each product exposing a configured JSON health endpoint; activity integration is optional.
 
 ## License
 
