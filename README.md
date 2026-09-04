@@ -392,10 +392,24 @@ config.grid.json Product definitions and console settings
 | Product links use the wrong address | Update the product base URL or set `NEXT_PUBLIC_VYNGRID_DOMAIN` and matching `subdomain` values. |
 | Health history does not persist | Ensure the VynGrid process can write to `data/`. |
 
-## Related Projects
+---
 
-VynGrid is the shared operations console for the VynOps product suite. Its default configuration includes VynOps, VynDC, VynCICD, VynCost, VynDB, VynAI, VynHana, and VynSAP. Product availability depends on each product exposing a configured JSON health endpoint; activity integration is optional.
+## Part of the VynOps Suite
+
+| Product | Purpose | Repo |
+|---|---|---|
+| **VynOps** | Kubernetes operations platform | [vynops/VynOps](https://github.com/vynops/VynOps) |
+| **VynAI** | Ollama fleet manager and AI gateway | [vynops/VynAI](https://github.com/vynops/VynAI) |
+| **VynCost** | Cloud cost visibility | [vynops/VynCost](https://github.com/vynops/VynCost) |
+| **VynDB** | Database operations | [vynops/VynDB](https://github.com/vynops/VynDB) |
+| **VynDC** | Data center management | [vynops/VynDC](https://github.com/vynops/VynDC) |
+| **VynCICD** | CI/CD pipeline management | [vynops/VynCICD](https://github.com/vynops/VynCICD) |
+| **VynHana** | SAP HANA Database management | [vynops/VynHana](https://github.com/vynops/VynHana) |
+| **VynSAP** | SAP ERP management | [vynops/VynSAP](https://github.com/vynops/VynSAP) |
+
+
+---
 
 ## License
 
-This repository does not currently declare a license. Treat distribution and reuse as restricted until a license is added.
+MIT — see [LICENSE](LICENSE)
