@@ -29,8 +29,29 @@ Built with Next.js 16 and a local JSON data store, VynGrid monitors configured s
 
 ---
 
+## Screenshots
+
+| 01 · SSO Federation & Authentication | 02 · Micro-Frontend Hub & Product Grid |
+| :---: | :---: |
+| <a href="screenshots/Screenshot%202026-09-01%20113629.png"><img src="screenshots/Screenshot%202026-09-01%20113629.png" alt="SSO Federation & Authentication" width="100%" /></a> | <a href="screenshots/Screenshot%202026-09-01%20113807.png"><img src="screenshots/Screenshot%202026-09-01%20113807.png" alt="Micro-Frontend Hub & Product Grid" width="100%" /></a> |
+
+| 03 · Suite Launcher & Dashboard View | 04 · 30-Day Health & Uptime Matrix |
+| :---: | :---: |
+| <a href="screenshots/Screenshot%202026-09-01%20113846.png"><img src="screenshots/Screenshot%202026-09-01%20113846.png" alt="Suite Launcher & Dashboard View" width="100%" /></a> | <a href="screenshots/Screenshot%202026-09-01%20113913.png"><img src="screenshots/Screenshot%202026-09-01%20113913.png" alt="30-Day Health & Uptime Matrix" width="100%" /></a> |
+
+| 05 · Cross-Service Telemetry & Activity Feed | 06 · Tenant Controls & Runtime Configuration |
+| :---: | :---: |
+| <a href="screenshots/Screenshot%202026-09-01%20113958.png"><img src="screenshots/Screenshot%202026-09-01%20113958.png" alt="Cross-Service Telemetry & Activity Feed" width="100%" /></a> | <a href="screenshots/Screenshot%202026-09-01%20114026.png"><img src="screenshots/Screenshot%202026-09-01%20114026.png" alt="Tenant Controls & Runtime Configuration" width="100%" /></a> |
+
+| 07 · Product Integration Credentials | |
+| :---: | :---: |
+| <a href="screenshots/Screenshot%202026-09-01%20114050.png"><img src="screenshots/Screenshot%202026-09-01%20114050.png" alt="Product Integration Credentials" width="100%" /></a> | |
+
+---
+
 ## Table of Contents
 
+- [Screenshots](#screenshots)
 - [Features](#features)
 - [Architecture](#architecture)
 - [Requirements](#requirements)
@@ -50,7 +71,7 @@ Built with Next.js 16 and a local JSON data store, VynGrid monitors configured s
 - [Project Structure](#project-structure)
 - [Technology Stack](#technology-stack)
 - [Troubleshooting](#troubleshooting)
-- [Related Projects](#related-projects)
+- [Part of the VynOps Suite](#part-of-the-vynops-suite)
 - [License](#license)
 
 ## Features
@@ -406,7 +427,6 @@ config.grid.json Product definitions and console settings
 | **VynCICD** | CI/CD pipeline management | [vynops/VynCICD](https://github.com/vynops/VynCICD) |
 | **VynHana** | SAP HANA Database management | [vynops/VynHana](https://github.com/vynops/VynHana) |
 | **VynSAP** | SAP ERP management | [vynops/VynSAP](https://github.com/vynops/VynSAP) |
-
 
 ---
 
