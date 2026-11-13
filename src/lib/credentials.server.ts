@@ -33,6 +33,10 @@ export function credentialConfigured(productId: string): boolean {
   return Boolean(readStore()[productId])
 }
 
+export function credentialReadable(productId: string): boolean {
+  try { return readCredential(productId) !== null } catch { return false }
+}
+
 export function saveCredential(productId: string, credential: ProductCredential) {
   const iv = crypto.randomBytes(12)
   const cipher = crypto.createCipheriv('aes-256-gcm', key(), iv)
@@ -51,5 +55,9 @@ export function readCredential(productId: string): ProductCredential | null {
   if (!record) return null
   const decipher = crypto.createDecipheriv('aes-256-gcm', key(), Buffer.from(record.iv, 'base64'))
   decipher.setAuthTag(Buffer.from(record.tag, 'base64'))
-  return JSON.parse(Buffer.concat([decipher.update(Buffer.from(record.data, 'base64')), decipher.final()]).toString('utf8')) as ProductCredential
+  try {
+    return JSON.parse(Buffer.concat([decipher.update(Buffer.from(record.data, 'base64')), decipher.final()]).toString('utf8')) as ProductCredential
+  } catch {
+    return null
+  }
 }

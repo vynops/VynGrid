@@ -85,7 +85,7 @@ VynGrid gives an operations team one place to:
 - Change product URLs, health/activity endpoints, refresh cadence, and enabled state without rebuilding.
 - Save and test per-product integration credentials encrypted at rest.
 
-The default grid includes VynOps, VynDC, VynCICD, VynCost, VynDB, VynAI, VynHana, and VynSAP. Adapt it to another product estate through **Settings** or `config.grid.json`.
+The default grid includes VynOps, VynDC, VynCICD, VynCost, VynDB, VynAI, VynMesh, and VynSAP. Adapt it to another product estate through **Settings** or `config.grid.json`.
 
 ## Architecture
 
@@ -425,7 +425,7 @@ config.grid.json Product definitions and console settings
 | **VynDB** | Database operations | [vynops/VynDB](https://github.com/vynops/VynDB) |
 | **VynDC** | Data center management | [vynops/VynDC](https://github.com/vynops/VynDC) |
 | **VynCICD** | CI/CD pipeline management | [vynops/VynCICD](https://github.com/vynops/VynCICD) |
-| **VynHana** | SAP HANA Database management | [vynops/VynHana](https://github.com/vynops/VynHana) |
+| **VynMesh** | Sovereign enterprise data intelligence | [vynops/VynMesh](https://github.com/vynops/VynMesh) |
 | **VynSAP** | SAP ERP management | [vynops/VynSAP](https://github.com/vynops/VynSAP) |
 
 ---

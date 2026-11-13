@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   Search, Zap, Server, GitBranch, DollarSign, Brain,
-  Database, Landmark, ExternalLink, ArrowRight, Settings,
+  Database, Landmark, Network, ExternalLink, ArrowRight, Settings,
   LayoutDashboard, Activity,
 } from 'lucide-react'
 import { cn, resolveProductUrl } from '@/lib/utils'
@@ -17,7 +17,7 @@ const PRODUCT_ICONS: Record<string, React.ElementType> = {
   vyncost: DollarSign,
   vyndb:   Database,
   vynai:   Brain,
-  vynhana: Database,
+  vynmesh: Network,
   vynsap:  Landmark,
 }
 

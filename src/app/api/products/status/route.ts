@@ -3,7 +3,7 @@ import fs from 'fs'
 import path from 'path'
 import { loadGridConfig, getEnabledProducts } from '@/lib/config.server'
 import { readCredential } from '@/lib/credentials.server'
-import type { ProductStatusResult } from '@/types'
+import type { ProductConfig, ProductStatusResult } from '@/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,6 +52,7 @@ async function checkProduct(
   url: string,
   healthPath: string,
   loginPath?: string,
+  loginType?: ProductConfig['loginType'],
 ): Promise<ProductStatusResult> {
   const endpoint = `${url}${healthPath}`
   const start    = Date.now()
@@ -60,7 +61,7 @@ async function checkProduct(
     if (loginPath) {
       const credential = readCredential(id)
       if (!credential) return { id, status: 'unknown', latencyMs: null, checkedAt: new Date().toISOString(), message: 'Session credentials required for health check' }
-      const login = productLogin(loginPath, url, credential.username, credential.password)
+      const login = productLogin(loginPath, loginType, url, credential.username, credential.password)
       const loginResponse = await login
       cookie = getCookieHeader(loginResponse)
       if (!loginResponse.ok && !cookie) return { id, status: 'offline', latencyMs: Date.now() - start, checkedAt: new Date().toISOString(), message: `Login failed (HTTP ${loginResponse.status})` }
@@ -92,8 +93,8 @@ async function checkProduct(
   }
 }
 
-async function productLogin(loginPath: string, url: string, username: string, password: string): Promise<Response> {
-  if (loginPath !== '/api/auth') {
+async function productLogin(loginPath: string, loginType: ProductConfig['loginType'], url: string, username: string, password: string): Promise<Response> {
+  if (loginType !== 'nextauth') {
     return fetch(`${url}${loginPath}`, {
       method: 'POST', cache: 'no-store', signal: AbortSignal.timeout(4000),
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -122,7 +123,7 @@ export async function GET() {
     const products = getEnabledProducts(config)
 
     const results = await Promise.all(
-      products.map(p => checkProduct(p.id, p.url, p.healthPath, p.loginPath)),
+      products.map(p => checkProduct(p.id, p.url, p.healthPath, p.loginPath, p.loginType)),
     )
 
     return NextResponse.json(uptimeFor(readHistory(), results), {

@@ -114,7 +114,7 @@ export const PRODUCT_DESCRIPTIONS: Record<string, string> = {
   vyncost: 'Identify cloud waste, rightsize workloads, and cut your cloud bill with AI recommendations.',
   vyndb:   'Unified DB monitoring, query tuning, security auditing, and AI-driven anomaly detection.',
   vynai:   'Deploy and manage Ollama LLM fleets with GPU monitoring and OpenAI-compatible gateway.',
-  vynhana: 'SAP HANA monitoring, query analysis, replication health, and AI-assisted operations.',
+  vynmesh: 'Sovereign enterprise data intelligence: connect, govern, and ask grounded questions across all your data.',
   vynsap:  'End-to-end SAP landscape visibility, change management, and AI-powered operations.',
 }
 

@@ -36,7 +36,7 @@ const PRODUCT_COLORS: Record<string, string> = {
   vyncost: 'text-orange-400',
   vyndb:   'text-emerald-400',
   vynai:   'text-blue-400',
-  vynhana: 'text-yellow-400',
+  vynmesh: 'text-yellow-400',
   vynsap:  'text-rose-400',
 }
 

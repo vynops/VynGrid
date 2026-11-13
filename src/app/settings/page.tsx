@@ -16,7 +16,8 @@ export default function SettingsPage() {
   const [saving,  setSaving]  = useState(false)
   const [saved,   setSaved]   = useState(false)
   const [error,   setError]   = useState<string | null>(null)
-  const [credentials, setCredentials] = useState<Record<string, { username: string; password: string; configured: boolean; testing?: boolean; result?: string }>>({})
+  const [credentials, setCredentials] = useState<Record<string, { username: string; password: string; configured: boolean; stale?: boolean; testing?: boolean; result?: string }>>({})
+  const [credentialVisible, setCredentialVisible] = useState<Record<string, boolean>>({})
   const [passwords, setPasswords] = useState({ current: '', next: '', confirm: '' })
   const [passwordVisible, setPasswordVisible] = useState({ current: false, next: false, confirm: false })
   const [changingPassword, setChangingPassword] = useState(false)
@@ -33,19 +34,30 @@ export default function SettingsPage() {
       .catch(() => setError('Failed to load configuration'))
     fetch('/api/config/credentials')
       .then(r => r.json())
-      .then((data: { configured: string[] }) => setCredentials(Object.fromEntries(data.configured.map(id => [id, { username: '', password: '', configured: true }] ))))
+      .then((data: { configured: string[]; unreadable?: string[] }) => setCredentials(Object.fromEntries([
+        ...data.configured.map(id => [id, { username: '', password: '', configured: true }] as const),
+        ...(data.unreadable ?? []).map(id => [id, { username: '', password: '', configured: false, stale: true }] as const),
+      ])))
       .catch(() => {})
   }, [])
 
-  async function saveCredential(productId: string) {
+  async function saveCredential(productId: string): Promise<boolean> {
     const credential = credentials[productId]
-    if (!credential?.username || !credential.password) return
+    if (!credential?.username?.trim() || !credential.password) {
+      setCredentials(current => ({ ...current, [productId]: { ...current[productId], username: current[productId]?.username ?? '', password: current[productId]?.password ?? '', configured: current[productId]?.configured ?? false, result: 'Enter both username and password' } }))
+      return false
+    }
     const response = await fetch('/api/config/credentials', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productId, username: credential.username, password: credential.password }) })
     const data = await response.json()
-    setCredentials(current => ({ ...current, [productId]: { ...credential, configured: response.ok, password: '', result: response.ok ? 'Credentials saved' : data.error } }))
+    setCredentials(current => ({ ...current, [productId]: { ...credential, configured: response.ok, stale: !response.ok && credential.stale, password: '', result: response.ok ? 'Credentials saved - click Test Connection' : data.error } }))
+    if (response.ok) setCredentialVisible(current => ({ ...current, [productId]: false }))
+    return response.ok
   }
 
   async function testCredential(productId: string) {
+    const typed = credentials[productId]
+    // Newly typed credentials are saved first so the test never runs against an older saved password.
+    if ((typed?.username?.trim() || typed?.password) && !(await saveCredential(productId))) return
     setCredentials(current => ({ ...current, [productId]: { ...current[productId], testing: true } }))
     const response = await fetch('/api/config/credentials/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ productId }) })
     const data = await response.json()
@@ -280,12 +292,17 @@ export default function SettingsPage() {
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                             <input type="text" value={credentials[product.id]?.username ?? ''} onChange={e => setCredentials(current => ({ ...current, [product.id]: { ...current[product.id], username: e.target.value, password: current[product.id]?.password ?? '', configured: current[product.id]?.configured ?? false } }))} placeholder="Integration username" autoComplete="off" className="w-full px-3 py-2 rounded-lg bg-surface-800 border border-surface-700 text-xs text-white" />
-                            <input type="password" value={credentials[product.id]?.password ?? ''} onChange={e => setCredentials(current => ({ ...current, [product.id]: { ...current[product.id], username: current[product.id]?.username ?? '', password: e.target.value, configured: current[product.id]?.configured ?? false } }))} placeholder={credentials[product.id]?.configured ? 'Password saved' : 'Integration password'} autoComplete="new-password" className="w-full px-3 py-2 rounded-lg bg-surface-800 border border-surface-700 text-xs text-white" />
+                            <div className="relative">
+                              <input type={credentialVisible[product.id] ? 'text' : 'password'} value={credentials[product.id]?.password ?? ''} onChange={e => setCredentials(current => ({ ...current, [product.id]: { ...current[product.id], username: current[product.id]?.username ?? '', password: e.target.value, configured: current[product.id]?.configured ?? false } }))} placeholder={credentials[product.id]?.stale ? 'Re-enter password' : credentials[product.id]?.configured ? 'Password saved' : 'Integration password'} autoComplete="new-password" className="w-full px-3 py-2 pr-10 rounded-lg bg-surface-800 border border-surface-700 text-xs text-white" />
+                              <button type="button" onClick={() => setCredentialVisible(current => ({ ...current, [product.id]: !current[product.id] }))} className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-slate-500 hover:text-white" aria-label={`${credentialVisible[product.id] ? 'Hide' : 'Show'} ${product.name} integration password`} title={credentialVisible[product.id] ? 'Hide password' : 'Show password'}>
+                                {credentialVisible[product.id] ? <EyeOff size={15} /> : <Eye size={15} />}
+                              </button>
+                            </div>
                           </div>
                           <div className="flex items-center gap-2 mt-2">
                             <button type="button" onClick={() => saveCredential(product.id)} className="px-3 py-1.5 rounded-md bg-surface-800 border border-surface-700 text-2xs text-slate-300 hover:text-white">Save Connection</button>
-                            <button type="button" onClick={() => testCredential(product.id)} disabled={!credentials[product.id]?.configured || credentials[product.id]?.testing} className="px-3 py-1.5 rounded-md border border-cyan-500/30 text-2xs text-cyan-400 disabled:opacity-40">{credentials[product.id]?.testing ? <LoaderCircle size={12} className="animate-spin" /> : 'Test Connection'}</button>
-                            <span className="text-2xs text-slate-500">{credentials[product.id]?.result ?? (credentials[product.id]?.configured ? 'Credentials saved' : 'Not configured')}</span>
+                            <button type="button" onClick={() => testCredential(product.id)} disabled={!(credentials[product.id]?.configured || (credentials[product.id]?.username?.trim() && credentials[product.id]?.password)) || credentials[product.id]?.testing} className="px-3 py-1.5 rounded-md border border-cyan-500/30 text-2xs text-cyan-400 disabled:opacity-40">{credentials[product.id]?.testing ? <LoaderCircle size={12} className="animate-spin" /> : 'Test Connection'}</button>
+                            <span className={cn('text-2xs', credentials[product.id]?.stale ? 'text-amber-400' : 'text-slate-500')}>{credentials[product.id]?.result ?? (credentials[product.id]?.stale ? 'Saved credentials can no longer be decrypted - re-enter username and password' : credentials[product.id]?.configured ? 'Credentials saved' : 'Not configured')}</span>
                           </div>
                         </div>
                       </div>

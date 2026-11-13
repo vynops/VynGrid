@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { credentialConfigured, saveCredential } from '@/lib/credentials.server'
+import { credentialConfigured, credentialReadable, saveCredential } from '@/lib/credentials.server'
 import { getEnabledProducts, loadGridConfig } from '@/lib/config.server'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
-  return NextResponse.json({ configured: getEnabledProducts(loadGridConfig()).filter(product => credentialConfigured(product.id)).map(product => product.id) })
+  const saved = getEnabledProducts(loadGridConfig()).filter(product => credentialConfigured(product.id)).map(product => product.id)
+  return NextResponse.json({ configured: saved.filter(credentialReadable), unreadable: saved.filter(id => !credentialReadable(id)) })
 }
 
 export async function PUT(req: NextRequest) {

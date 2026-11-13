@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { ExternalLink, Settings2 } from 'lucide-react'
 import {
-  Zap, Server, GitBranch, DollarSign, Brain, Database, Landmark,
+  Zap, Server, GitBranch, DollarSign, Brain,   Database, Landmark, Network,
 } from 'lucide-react'
 import { cn, resolveProductUrl } from '@/lib/utils'
 import { COLOR_CLASSES, PRODUCT_DESCRIPTIONS } from '@/lib/products'
@@ -17,7 +17,7 @@ const ICONS: Record<string, React.ElementType> = {
   vyncost: DollarSign,
   vyndb:   Database,
   vynai:   Brain,
-  vynhana: Database,
+  vynmesh: Network,
   vynsap:  Landmark,
 }
 

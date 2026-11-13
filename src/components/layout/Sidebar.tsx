@@ -7,7 +7,7 @@ import { signOut, useSession } from 'next-auth/react'
 import {
   Grid3x3, LayoutDashboard, Activity, Bell, Settings,
   ChevronLeft, ChevronRight, Server, GitBranch, DollarSign,
-  Brain, Database, Zap, Landmark, ExternalLink, LogOut, User,
+  Brain, Database, Zap, Landmark, Network, ExternalLink, LogOut, User,
 } from 'lucide-react'
 import GRID_CONFIG from '../../../config.grid.json'
 import { cn, resolveProductUrl } from '@/lib/utils'
@@ -45,7 +45,7 @@ const NAV_ITEMS: NavGroup[] = [
     items: PRODUCT_NAV.map(p => ({
       href: resolveProductUrl(p),
       icon: ({ vynops: Zap, vyndc: Server, vyncicd: GitBranch, vyncost: DollarSign,
-               vyndb: Database, vynai: Brain, vynhana: Database, vynsap: Landmark } as Record<string, React.ElementType>)[p.id] ?? Zap,
+               vyndb: Database, vynai: Brain, vynmesh: Network, vynsap: Landmark } as Record<string, React.ElementType>)[p.id] ?? Zap,
       label: p.name,
       color: ({ cyan: 'text-cyan-400', green: 'text-green-400', violet: 'text-violet-400',
                 orange: 'text-orange-400', emerald: 'text-emerald-400', blue: 'text-blue-400',

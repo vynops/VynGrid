@@ -14,7 +14,14 @@ export async function POST(req: NextRequest) {
         ? await nextAuthLogin(product.url, credential.username, credential.password)
         : await fetch(`${product.url}${product.loginPath}`, { method: 'POST', cache: 'no-store', signal: AbortSignal.timeout(5000), headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ email: credential.username, password: credential.password }) })
       cookie = getCookieHeader(login)
-      if (!login.ok && !cookie) return NextResponse.json({ ok: false, error: `Login failed (HTTP ${login.status})` }, { status: 502 })
+      if (!login.ok && !cookie) {
+        const rejected = [302, 400, 401].includes(login.status)
+        const error = rejected ? `Invalid username or password (HTTP ${login.status}) - use the email and password that sign in directly to ${product.name}`
+          : login.status === 403 ? 'Account is deactivated or blocked (HTTP 403)'
+          : login.status === 429 ? 'Product is rate-limiting logins (HTTP 429) - wait a minute and retry'
+          : `Login failed (HTTP ${login.status})`
+        return NextResponse.json({ ok: false, error }, { status: 502 })
+      }
     }
     const response = await fetch(`${product.url}${product.healthPath}`, { cache: 'no-store', redirect: 'manual', signal: AbortSignal.timeout(5000), headers: { Accept: 'application/json', ...(cookie ? { Cookie: cookie } : credential ? { Authorization: `Basic ${Buffer.from(`${credential.username}:${credential.password}`).toString('base64')}` } : {}) } })
     const contentType = response.headers.get('content-type') ?? ''
