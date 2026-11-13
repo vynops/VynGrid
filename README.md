@@ -25,6 +25,8 @@
 
 VynGrid monitors product availability, response time, activity, and 30-day uptime from a single authenticated console. It is designed for operators who need one reliable view across the Vyn product portfolio.
 
+The overview Activity Feed shows up to 10 matching events. Use **View full activity log** to see the full available list at `/activity`.
+
 Built with Next.js 16 and a local JSON data store, VynGrid monitors configured services from the server itself, normalizes their operational activity, and keeps product credentials encrypted at rest. It requires no separate database or monitoring agent.
 
 ---

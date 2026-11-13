@@ -86,6 +86,7 @@ export function ActivityFeed({ refreshIntervalSeconds }: ActivityFeedProps) {
     (typeFilter === 'all' || event.type === typeFilter) &&
     new Date(event.timestamp).getTime() >= cutoff,
   )
+  const visibleEvents = pathname === '/activity' ? events : events.slice(0, 10)
 
   return (
     <div className="flex flex-col h-full rounded-2xl border border-surface-800 bg-surface-900/80">
@@ -160,14 +161,16 @@ export function ActivityFeed({ refreshIntervalSeconds }: ActivityFeedProps) {
           <option value="24h">Last 24 Hours</option>
           <option value="all">All Available</option>
         </select>
-        <span className="ml-auto text-2xs text-slate-600">{events.length} events</span>
+        <span className="ml-auto text-2xs text-slate-600">
+          {visibleEvents.length < events.length ? `Showing ${visibleEvents.length} of ${events.length} events` : `${events.length} events`}
+        </span>
       </div>
 
       <div className="flex-1 overflow-y-auto divide-y divide-surface-800/60">
         {error && <div className="px-5 py-3 text-xs text-red-400">{error}</div>}
         {sourceErrors.length > 0 && <div className="px-5 py-3 text-2xs text-yellow-400">Unavailable sources: {sourceErrors.join(', ')}</div>}
         {loading && <div className="px-5 py-6 text-center text-xs text-slate-500">Loading activity…</div>}
-        {events.map(event => {
+        {visibleEvents.map(event => {
           const Icon      = TYPE_ICONS[event.type] ?? Info
           const typeColor = TYPE_COLORS[event.type] ?? TYPE_COLORS.info
           const severityBar = SEVERITY_BAR[event.severity ?? 'info']
