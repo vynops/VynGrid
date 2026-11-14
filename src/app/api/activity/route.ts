@@ -1,39 +1,13 @@
 import { NextResponse } from 'next/server'
 import { loadGridConfig, getEnabledProducts } from '@/lib/config.server'
-import { credentialConfigured, readCredential } from '@/lib/credentials.server'
+import { readCredential } from '@/lib/credentials.server'
+import { enrichIncidentEvents, normalizeActivity } from '@/lib/activity'
+import { resolveProductUrl } from '@/lib/utils'
 import type { ActivityEvent, ProductConfig } from '@/types'
 
 export const dynamic = 'force-dynamic'
 
-function normalize(product: ProductConfig, value: unknown): ActivityEvent[] {
-  const objectValue = value as { events?: unknown[]; data?: unknown[]; entries?: unknown[]; alerts?: unknown[]; incidents?: unknown[]; active?: unknown[]; deployments?: unknown[]; runs?: unknown[] }
-  const records = Array.isArray(value) ? value.flatMap(record => {
-    if (record && typeof record === 'object' && Array.isArray((record as { active?: unknown[] }).active)) return (record as { active: unknown[] }).active
-    return [record]
-  }) : objectValue?.events ?? objectValue?.entries ?? objectValue?.alerts ?? objectValue?.incidents ?? objectValue?.deployments ?? objectValue?.runs ?? objectValue?.active ?? (objectValue?.data ?? [])
-  return records.flatMap((record, index) => {
-    if (!record || typeof record !== 'object') return []
-    const item = record as Record<string, unknown>
-    const text = (...values: unknown[]) => values.find(value => typeof value === 'string' && value.trim())?.toString().trim() ?? ''
-    const timestamp = text(item.timestamp, item.ts, item.createdAt, item.created_at, item.updatedAt, item.updated_at, item.deployedAt, item.finishedAt, item.ALERT_TIMESTAMP)
-    if (!timestamp || Number.isNaN(Date.parse(timestamp))) return []
-    const action = text(item.action, item.event, item.kind, item.type, item.status)
-    if (/^(login|logout|auth|session)\b/i.test(action)) return []
-    const detail = text(item.message, item.detail, item.title, item.name, item.description, item.ALERT_DETAILS, item.ALERT_NAME, item.ALERT_DESCRIPTION)
-    if (/^(signed in|signed out|too many failed attempts|wrong password)/i.test(detail)) return []
-    const deployment = text(item.pipelineName, item.version, item.environment)
-    const message = detail || (deployment ? `Deployment ${deployment}${item.status ? ` (${String(item.status)})` : ''}` : action ? `${product.name}: ${action}` : '')
-    if (!message) return []
-    const rawType = `${text(item.type, item.kind, item.action, item.event, item.status)} ${product.activityPath ?? ''}`.toLowerCase()
-    const type = rawType.includes('deploy') ? 'deployment' : rawType.includes('incident') ? 'incident' : rawType.includes('alert') || rawType.includes('anomal') ? 'alert' : rawType.includes('resolv') ? 'resolve' : 'info'
-    const rawSeverity = text(item.severity, item.level, item.ALERT_RATING ? Number(item.ALERT_RATING) >= 5 ? 'critical' : 'warning' : 'info').toLowerCase()
-    const severity = rawSeverity === 'critical' || rawSeverity === 'warning' ? rawSeverity : 'info'
-    const eventId = text(item.id, item.eventId, item.ALERT_ID, item.runId, item.deploymentId) || String(index)
-    return [{ id: `${product.id}:${eventId}:${timestamp}`, productId: product.id, productName: product.name, type, message, severity, timestamp, source: product.activityPath }]
-  })
-}
-
-async function fetchProduct(product: ProductConfig): Promise<{ events: ActivityEvent[]; error?: string }> {
+async function fetchProduct(product: ProductConfig): Promise<{ events: ActivityEvent[]; error?: string; warning?: string }> {
   const credential = readCredential(product.id)
   if (product.loginPath && !credential) return { events: [], error: 'Credentials not configured' }
   const endpoint = `${product.url}${product.activityPath ?? '/api/activity'}`
@@ -47,11 +21,30 @@ async function fetchProduct(product: ProductConfig): Promise<{ events: ActivityE
       if (!login.ok && !cookie) return { events: [], error: `Login failed (HTTP ${login.status})` }
       if (!cookie) return { events: [], error: 'Login returned no session cookie' }
     }
-    const response = await fetch(endpoint, { cache: 'no-store', redirect: 'manual', signal: AbortSignal.timeout(5000), headers: { Accept: 'application/json', ...(cookie ? { Cookie: cookie } : credential ? { Authorization: `Basic ${Buffer.from(`${credential.username}:${credential.password}`).toString('base64')}` } : {}) } })
+    const headers = { Accept: 'application/json', ...(cookie ? { Cookie: cookie } : credential ? { Authorization: `Basic ${Buffer.from(`${credential.username}:${credential.password}`).toString('base64')}` } : {}) }
+    const response = await fetch(endpoint, { cache: 'no-store', redirect: 'manual', signal: AbortSignal.timeout(5000), headers })
     if (!response.ok) return { events: [], error: `HTTP ${response.status}` }
     const contentType = response.headers.get('content-type') ?? ''
     if (!contentType.includes('application/json')) return { events: [], error: 'Endpoint returned a login page, not JSON' }
-    return { events: normalize(product, await response.json()) }
+    let events = normalizeActivity(product, await response.json())
+    let warning: string | undefined
+    if (product.id === 'vyndb' && events.some(event => event.action === 'incident.escalate')) {
+      if (events.some(event => event.action === 'incident.escalate' && !event.incidentTitle)) {
+        try {
+          const incidents = await fetch(`${product.url}/api/incidents`, { cache: 'no-store', redirect: 'manual', signal: AbortSignal.timeout(5000), headers })
+          if (!incidents.ok) throw new Error(`HTTP ${incidents.status}`)
+          events = enrichIncidentEvents(events, await incidents.json())
+          if (events.some(event => event.action === 'incident.escalate' && !event.incidentTitle)) {
+            warning = 'Some escalation records could not be matched to an incident; details are unavailable'
+          }
+        } catch (error) {
+          warning = `Incident details unavailable: ${error instanceof Error ? error.message : 'Connection failed'}`
+        }
+      }
+      const href = new URL('/incidents', resolveProductUrl(product)).href
+      events = events.map(event => event.action === 'incident.escalate' ? { ...event, href } : event)
+    }
+    return { events, warning }
   } catch (error) {
     return { events: [], error: error instanceof Error ? error.message : 'Connection failed' }
   }
@@ -60,10 +53,10 @@ async function fetchProduct(product: ProductConfig): Promise<{ events: ActivityE
 export async function GET() {
   try {
     const products = getEnabledProducts(loadGridConfig())
-    const results = await Promise.all(products.map(async product => ({ productId: product.id, ...(await fetchProduct(product)) })))
+    const results = await Promise.all(products.map(async product => ({ productId: product.id, productName: product.name, ...(await fetchProduct(product)) })))
     const events = [...new Map(results.flatMap(result => result.events).map(event => [event.id, event])).values()]
-      .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp)).slice(0, 100)
-    return NextResponse.json({ events, sources: results.map(({ productId, events: sourceEvents, error }) => ({ productId, count: sourceEvents.length, error })) })
+      .sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))
+    return NextResponse.json({ events, sources: results.map(({ productId, productName, events: sourceEvents, error, warning }) => ({ productId, productName, count: sourceEvents.length, error, warning })) })
   } catch {
     return NextResponse.json({ error: 'Failed to load activity' }, { status: 500 })
   }

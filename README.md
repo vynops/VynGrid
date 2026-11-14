@@ -25,7 +25,7 @@
 
 VynGrid monitors product availability, response time, activity, and 30-day uptime from a single authenticated console. It is designed for operators who need one reliable view across the Vyn product portfolio.
 
-The overview Activity Feed shows up to 10 matching events. Use **View full activity log** to see the full available list at `/activity`.
+The overview Activity Feed shows up to 10 matching activity items. Use **View full activity log** to see the full available list at `/activity`.
 
 Built with Next.js 16 and a local JSON data store, VynGrid monitors configured services from the server itself, normalizes their operational activity, and keeps product credentials encrypted at rest. It requires no separate database or monitoring agent.
 
@@ -182,7 +182,17 @@ The **Health Matrix** displays current results plus a 30-day observation history
 
 ### Activity
 
-The **Activity** page collects up to 100 newest normalized events. It recognizes common API response shapes and filters known authentication events, keeping the feed focused on operational changes.
+The **Activity** page shows all events returned by the configured sources, newest first; each source may impose its own limit. It recognizes common API response shapes and filters known authentication events, keeping the feed focused on operational changes.
+
+The dashboard balances up to 10 activity items across products. Repeated VynDB escalation attempts are grouped by incident after applying the selected time range, with the latest attempt's outcome and a count of fetched attempts (not a lifetime total). The full Activity page retains individual audit records. Failed attempts are labelled as incomplete escalations, not new incidents.
+
+VynDB escalation records include the incident title, outcome, retry state and identity. Expand **Latest attempt's notification status** to see which channels delivered, failed, need configuration or are not applicable. For older records, VynGrid uses the same authenticated session to look up `/api/incidents`. If this lookup fails or an incident cannot be identified, the feed explicitly reports unavailable details rather than inventing an issue. **View incidents in VynDB** opens its verified incidents list; that product does not currently support exact-incident URLs.
+
+Run the activity regression tests with Node.js 22.18 or later:
+
+```powershell
+node --test src\lib\activity.test.mjs
+```
 
 ### Settings
 

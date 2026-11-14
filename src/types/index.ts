@@ -74,11 +74,28 @@ export interface ActivityEvent {
   timestamp: string
   severity?: 'critical' | 'warning' | 'info'
   source?: string
+  action?: string
+  resourceId?: string
+  incidentId?: string
+  incidentTitle?: string
+  incidentStatus?: string
+  success?: boolean
+  outcome?: 'sent' | 'not_applicable' | 'configuration_error' | 'retrying' | 'retry_exhausted'
+  policy?: string
+  step?: number
+  attempt?: number
+  nextRetryAt?: string
+  channels?: Array<{
+    channel: 'slack' | 'teams' | 'webhook' | 'email' | 'oncall'
+    outcome: 'sent' | 'not_applicable' | 'configuration_error' | 'failed'
+  }>
+  occurrences?: number
+  href?: string
 }
 
 export interface ActivityResponse {
   events: ActivityEvent[]
-  sources: Array<{ productId: string; count: number; error?: string }>
+  sources: Array<{ productId: string; productName: string; count: number; error?: string; warning?: string }>
 }
 
 export interface KPI {

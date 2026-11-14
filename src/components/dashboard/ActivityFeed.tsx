@@ -3,8 +3,9 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Activity, AlertTriangle, CheckCircle2, GitMerge, Info, Pause, Play, RefreshCw, Zap } from 'lucide-react'
+import { Activity, AlertTriangle, CheckCircle2, ExternalLink, GitMerge, Info, Pause, Play, RefreshCw, Zap } from 'lucide-react'
 import { cn, timeAgo } from '@/lib/utils'
+import { groupEscalationAttempts } from '@/lib/activity'
 import type { ActivityEvent, ActivityResponse } from '@/types'
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
@@ -44,10 +45,35 @@ interface ActivityFeedProps {
   refreshIntervalSeconds: number
 }
 
+function balanceByProduct(events: ActivityEvent[], limit: number): ActivityEvent[] {
+  const grouped = new Map<string, ActivityEvent[]>()
+  for (const event of events) {
+    const productEvents = grouped.get(event.productId)
+    if (productEvents) productEvents.push(event)
+    else grouped.set(event.productId, [event])
+  }
+
+  const sources = [...grouped.values()]
+  const balanced: ActivityEvent[] = []
+  for (let index = 0; balanced.length < limit; index++) {
+    let found = false
+    for (const source of sources) {
+      const event = source[index]
+      if (!event) continue
+      balanced.push(event)
+      found = true
+      if (balanced.length === limit) break
+    }
+    if (!found) break
+  }
+
+  return balanced.sort((a, b) => Date.parse(b.timestamp) - Date.parse(a.timestamp))
+}
+
 export function ActivityFeed({ refreshIntervalSeconds }: ActivityFeedProps) {
   const pathname = usePathname()
   const [eventsData, setEventsData] = useState<ActivityEvent[]>([])
-  const [sourceErrors, setSourceErrors] = useState<string[]>([])
+  const [sources, setSources] = useState<ActivityResponse['sources']>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isLive, setIsLive] = useState(true)
@@ -63,7 +89,7 @@ export function ActivityFeed({ refreshIntervalSeconds }: ActivityFeedProps) {
       if (!response.ok) throw new Error(`Activity request failed (${response.status})`)
       const data = await response.json() as ActivityResponse
       setEventsData(data.events)
-      setSourceErrors(data.sources.filter(source => source.error).map(source => `${source.productId}: ${source.error}`))
+      setSources(data.sources)
       setError(null)
       setNow(Date.now())
     } catch (err) {
@@ -86,7 +112,10 @@ export function ActivityFeed({ refreshIntervalSeconds }: ActivityFeedProps) {
     (typeFilter === 'all' || event.type === typeFilter) &&
     new Date(event.timestamp).getTime() >= cutoff,
   )
-  const visibleEvents = pathname === '/activity' ? events : events.slice(0, 10)
+  const sourceErrors = sources.filter(source => source.error).map(source => `${source.productName}: ${source.error}`)
+  const sourceWarnings = sources.filter(source => source.warning).map(source => `${source.productName}: ${source.warning}`)
+  const dashboardEvents = pathname === '/activity' ? events : groupEscalationAttempts(events)
+  const visibleEvents = pathname === '/activity' ? events : balanceByProduct(dashboardEvents, 10)
 
   return (
     <div className="flex flex-col h-full rounded-2xl border border-surface-800 bg-surface-900/80">
@@ -133,7 +162,7 @@ export function ActivityFeed({ refreshIntervalSeconds }: ActivityFeedProps) {
           className="rounded-md border border-surface-700 bg-surface-800 px-2 py-1.5 text-2xs text-slate-300 outline-none focus:border-cyan-500/50"
         >
           <option value="all">All Products</option>
-          {[...new Map(eventsData.map(event => [event.productId, event.productName])).entries()].map(([productId, productName]) => (
+          {sources.map(({ productId, productName }) => (
             <option key={productId} value={productId}>{productName}</option>
           ))}
         </select>
@@ -162,13 +191,16 @@ export function ActivityFeed({ refreshIntervalSeconds }: ActivityFeedProps) {
           <option value="all">All Available</option>
         </select>
         <span className="ml-auto text-2xs text-slate-600">
-          {visibleEvents.length < events.length ? `Showing ${visibleEvents.length} of ${events.length} events` : `${events.length} events`}
+          {dashboardEvents.length < events.length
+            ? `${visibleEvents.length} activity items / ${events.length} source records`
+            : visibleEvents.length < events.length ? `Showing ${visibleEvents.length} of ${events.length} events` : `${events.length} events`}
         </span>
       </div>
 
       <div className="flex-1 overflow-y-auto divide-y divide-surface-800/60">
         {error && <div className="px-5 py-3 text-xs text-red-400">{error}</div>}
         {sourceErrors.length > 0 && <div className="px-5 py-3 text-2xs text-yellow-400">Unavailable sources: {sourceErrors.join(', ')}</div>}
+        {sourceWarnings.length > 0 && <div className="px-5 py-3 text-2xs text-yellow-400">{sourceWarnings.join('; ')}</div>}
         {loading && <div className="px-5 py-6 text-center text-xs text-slate-500">Loading activity…</div>}
         {visibleEvents.map(event => {
           const Icon      = TYPE_ICONS[event.type] ?? Info
@@ -190,10 +222,41 @@ export function ActivityFeed({ refreshIntervalSeconds }: ActivityFeedProps) {
                 <div className="flex items-baseline gap-1.5 mb-0.5">
                   <span className={cn('text-2xs font-bold', pColor)}>{event.productName}</span>
                   <span className="text-2xs text-slate-600">·</span>
-                  <span className="text-2xs text-slate-500 font-medium capitalize">{event.type}</span>
+                  <span className="text-2xs text-slate-500 font-medium capitalize">{event.action === 'incident.escalate' ? 'escalation' : event.type}</span>
                 </div>
                 <p className="text-xs text-slate-300 leading-relaxed line-clamp-2">{event.message}</p>
-                <span className="text-2xs text-slate-600 mt-1 block">{timeAgo(event.timestamp)}</span>
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-2xs text-slate-500">
+                  <time dateTime={event.timestamp} title={new Date(event.timestamp).toLocaleString()}>
+                    {event.action === 'incident.escalate' ? 'Latest attempt: ' : ''}{timeAgo(event.timestamp)}
+                  </time>
+                  {event.action === 'incident.escalate' && (event.occurrences ?? 0) > 1 && (
+                    <span title="Attempts in the selected time range among records returned by the source; not a lifetime total.">
+                      {event.occurrences} fetched attempts
+                    </span>
+                  )}
+                  {event.nextRetryAt && (
+                    <span title={`Next retry: ${new Date(event.nextRetryAt).toLocaleString()}`}>Retry scheduled</span>
+                  )}
+                  {event.href && (
+                    <a href={event.href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-cyan-400 hover:text-cyan-300">
+                      View incidents in {event.productName}<ExternalLink size={10} />
+                    </a>
+                  )}
+                </div>
+                {!!event.channels?.length && (
+                  <details className="mt-1 text-2xs text-slate-500">
+                    <summary className="cursor-pointer hover:text-slate-300">Latest attempt's notification status</summary>
+                    <ul className="mt-1 space-y-0.5">
+                      {event.channels.map(({ channel, outcome }) => (
+                        <li key={channel}>
+                          <span className="capitalize">{channel}</span>: {outcome === 'not_applicable' ? 'Not applicable (disabled or not targeted)'
+                            : outcome === 'configuration_error' ? 'Needs configuration'
+                            : outcome === 'failed' ? 'Delivery failed' : 'Delivered'}
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
               </div>
             </div>
           )

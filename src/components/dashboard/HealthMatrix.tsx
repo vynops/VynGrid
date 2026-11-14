@@ -105,20 +105,36 @@ export function HealthMatrix({ products, statuses }: HealthMatrixProps) {
       {/* Uptime sparkline row */}
       <div className="px-5 py-3 border-t border-surface-800">
         <div className="flex items-center justify-between">
-          <span className="text-2xs text-slate-500">Last 7 days (30-day %)</span>
+          <span
+            className="text-2xs text-slate-500"
+            title="The 30-day percentage uses observed days only; each ratio is online days / observed days."
+          >
+            7d trend / 30d uptime
+          </span>
           <div className="flex items-center gap-3">
             {products.map(product => {
               const cc = COLOR_CLASSES[product.color]
               const result = statuses[product.id]
-              const days = (result?.uptimeDays ?? []).slice(-7)
+              const uptimeDays = result?.uptimeDays ?? []
+              const observedDays = uptimeDays.filter((day): day is boolean => day !== null)
+              const onlineDays = observedDays.filter(Boolean).length
+              const recentDays = uptimeDays.slice(-7)
               return (
-                <div key={product.id} className="flex items-center gap-1.5" title={product.name}>
+                <div
+                  key={product.id}
+                  className="flex items-center gap-1.5"
+                  title={`${product.name}: ${onlineDays} of ${observedDays.length} observed days online`}
+                >
                   <div className="flex items-end gap-px">
-                    {days.map((up, i) => (
+                    {recentDays.map((up, i) => (
                       <div key={i} className={cn('w-1 h-2 rounded-sm', up === true ? cc.dot : up === false ? 'bg-red-500/60' : 'bg-surface-700')} />
                     ))}
                   </div>
-                  <span className="text-2xs text-slate-500 tabular-nums">{result?.uptimePercent == null ? 'collecting' : `${result.uptimePercent}%`}</span>
+                  <span className="text-2xs text-slate-500 tabular-nums">
+                    {result?.uptimePercent == null || observedDays.length === 0
+                      ? 'collecting'
+                      : `${result.uptimePercent}% ${onlineDays}/${observedDays.length}`}
+                  </span>
                 </div>
               )
             })}
